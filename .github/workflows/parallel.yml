@@ -18,6 +18,8 @@ jobs:
           fetch-depth: 1
           submodules: true
       # here you need to do all your single run stuff an produce txt file "matrix.txt" where each line will be an matrix argument
+      - name: Generate matrix.txt
+        run: echo "job1\njob2\njob3\n" >> matrix.txt
       # next step will convert this to json in form like '{ "arg":[arg1,arg2,...]' which will be used in next job 
       - name: Prepare Matrix
         id: out
