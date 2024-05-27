@@ -45,6 +45,7 @@ jobs:
       - name: Example run
         run: |
           echo ${{ matrix.arg }}
+          mkdir .reports
           echo Run ${{ matrix.arg }} in runner >> .reports/${{ matrix.arg }}.md
       
       # this an example step how to upload artifacts from each matrix run
