@@ -1,0 +1,82 @@
+name: Run parallel jobs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  # this is 1st iteration job which is used to perpare matrix runs
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.out.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        # this will ensure all submodules are fetched and only latest commit fetched
+        with:
+          fetch-depth: 1
+          submodules: true
+      # here you need to do all your single run stuff an produce txt file "matrix.txt" where each line will be an matrix argument
+      # next step will convert this to json in form like '{ "arg":[arg1,arg2,...]' which will be used in next job 
+      - name: Prepare Matrix
+        id: out
+        # because it's a json with arrays you are free to create other properties with array values to support multi dimensional matrices
+        run: |
+          echo "{\"arg\": $(jq --raw-input --slurp --compact-output 'split("\n") | map(select(. != ""))' matrix.txt)}" > matrix.json
+          cat matrix.json
+          echo "matrix=$(cat matrix.json)" >> $GITHUB_OUTPUT
+  
+  # this is dynamic matrix run job itself
+  run:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      # here we obtaining matrix object from previous step and scheduling matrix runs
+      matrix: ${{ fromJson(needs.build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+      # we can obtain matric arguments as such ('arg' in our case)
+      - name: Example run
+        run: |
+          echo ${{ matrix.arg }}
+          echo Run ${{ matrix.arg }} in runner >> .reports/${{ matrix.arg }}.md
+      
+      # this an example step how to upload artifacts from each matrix run
+      # your job need to produce artifacts and place into .reports/ folder or you can specify your own
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.benchmark }}
+          path: .reports/
+          retention-days: 1
+  
+  # aggregation job
+  merge-reports:
+    runs-on: ubuntu-latest
+    needs: run
+    steps:
+      # this step will load ALL artifacts in folder (this one we needed)
+      - name: Download Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: .reports/
+      # then we can manipulate or merge them all into single report.md
+      - name: Merge Reports
+        run: |
+            echo -e "\n# Build from:\n" >> report.md
+            echo $GITHUB_SHA >> report.md
+            find .benchmark_results -name '*.md' -print0 | while IFS= read -r -d '' file; do
+              echo -e "\n# $(basename "$file" .md)\n" >> report.md
+              cat "$file" >> report.md
+            done
+      # and for example upload it
+      - name: Upload Merged Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: report.md
+          retention-days: 1
