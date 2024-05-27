@@ -53,7 +53,7 @@ jobs:
       - name: Upload Report
         uses: actions/upload-artifact@v4
         with:
-          name: report-${{ matrix.benchmark }}
+          name: report-${{ matrix.run }}
           path: .reports/
           retention-days: 1
   
@@ -72,7 +72,7 @@ jobs:
         run: |
             echo -e "\n# Build from:\n" >> report.md
             echo $GITHUB_SHA >> report.md
-            find .benchmark_results -name '*.md' -print0 | while IFS= read -r -d '' file; do
+            find .reports -name '*.md' -print0 | while IFS= read -r -d '' file; do
               echo -e "\n# $(basename "$file" .md)\n" >> report.md
               cat "$file" >> report.md
             done
