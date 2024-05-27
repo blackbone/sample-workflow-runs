@@ -30,7 +30,7 @@ jobs:
   # this is dynamic matrix run job itself
   run:
     runs-on: ubuntu-latest
-    needs: build
+    needs: prepare
     strategy:
       # here we obtaining matrix object from previous step and scheduling matrix runs
       matrix: ${{ fromJson(needs.build.outputs.matrix) }}
